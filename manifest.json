@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Userscript Manager",
+  "version": "0.1",
+  "description": "Minimal extension to manage userscripts",
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab",
+    "userScripts"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Userscript Manager"
+  },
+  "options_page": "dashboard.html",
+  "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [{
+    "resources": ["gm-api.js", "meta-parser.js"],
+    "matches": ["<all_urls>"]
+  }]
+}

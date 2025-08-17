@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Userscript Manager Dashboard</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 10px; max-width: 800px; }
+    #tabs {
+      margin-bottom: 10px;
+    }
+    #tabs button {
+      margin-right: 5px;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    #scriptList { list-style: none; padding: 0; }
+    #scriptList li { margin-bottom: 10px; }
+    textarea { width: 100%; height: 150px; font-family: monospace; }
+    .hidden { display: none; }
+    #logPanel, #storagePanel {
+      white-space: pre-wrap;
+      background: #111;
+      color: #eee;
+      height: 200px;
+      overflow: auto;
+      margin-top: 10px;
+      padding: 5px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    button { margin-right: 5px; }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 5px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+    }
+    input[type=text] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+  </style>
+</head>
+<body>
+  <h2>Userscripts</h2>
+  <div id="tabs">
+    <button id="tabScriptsBtn">Scripts</button>
+    <button id="tabStorageBtn">Storage Inspector</button>
+  </div>
+
+  <div id="scriptsTab">
+    <button id="addScriptBtn">+ Add Script</button>
+    <ul id="scriptList"></ul>
+
+    <div id="editor" class="hidden">
+      <h3 id="editorTitle">Add/Edit Script</h3>
+      <label>
+        Name:<br />
+        <input type="text" id="scriptName" />
+      </label><br />
+      <label>
+        Match Patterns (comma separated, ref: <a target="_blank" rel="noopener noreferrer" href="https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns">Match pattern</a>):<br />
+        <input type="text" id="scriptMatch" placeholder="e.g. *://*.example.com/*, *://*.foo.com/*" />
+      </label><br />
+      <label>
+        Exclude Patterns (comma separated):<br />
+        <input type="text" id="scriptExclude" placeholder="e.g. *://excluded.example.com/*" />
+      </label><br />
+      <label>
+        Userscript Code:<br />
+        <textarea id="scriptCode" spellcheck="false"></textarea>
+      </label><br />
+      <button id="saveScriptBtn">Save</button>
+      <button id="cancelEditBtn">Cancel</button>
+    </div>
+
+    <h3>Logs</h3>
+    <div id="logPanel">Select a script and click "View Logs" to see output here.</div>
+  </div>
+
+  <div id="storageTab" class="hidden">
+    <h3>Storage Inspector</h3>
+    <label for="storageScriptSelect">Select Userscript:</label>
+    <select id="storageScriptSelect"></select>
+
+    <button id="refreshStorageBtn">Refresh</button>
+    <button id="addStorageEntryBtn">+ Add Entry</button>
+
+    <table id="storageTable">
+      <thead>
+        <tr><th>Key</th><th>Value</th><th>Actions</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="addStorageEntryForm" class="hidden">
+      <h4>Add Storage Entry</h4>
+      <label>Key:<br /><input type="text" id="newStorageKey" /></label><br />
+      <label>Value:<br /><input type="text" id="newStorageValue" /></label><br />
+      <button id="saveStorageEntryBtn">Save Entry</button>
+      <button id="cancelStorageEntryBtn">Cancel</button>
+    </div>
+  </div>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>
