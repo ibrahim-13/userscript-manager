@@ -2,7 +2,13 @@ import { parseMetadata } from './meta-parser.js';
 
 /**
  * @typedef {import("./chrome.js")} chrome
+ */
+
+/**
  * @typedef {{[key: string]: string | string[]}} UserScriptMetadata
+ */
+
+/**
  * @typedef {object} UserScriptData
  * @property {string} id id of the userscript
  * @property {string} name name of the userscript
@@ -13,6 +19,33 @@ import { parseMetadata } from './meta-parser.js';
  * @property {UserScriptMetadata} meta metadata of the userscript
  */
 
+/**
+ * @typedef {object} UserScriptMenu
+ * @property {string} scriptId id of the script
+ * @property {string} menuId id of the menu
+ * @property {string} name name of the menu
+ * @property {() => void} callback function to call when menu is clicked
+ */
+
+
+/**
+ * @typedef {object} TabData
+ * @property {Array<UserScriptMenu>} menu userscript menus for tab
+ * @property {Array<UserScriptData>} scriptIds script ids registered for tab
+ */
+/**
+ * @typedef {object} UserScriptLog
+ * @property {string} time timestamp
+ * @property {string} data log data
+ */
+
+/**
+ * @function generateId
+ * @returns {string} id generated from timestamp
+ */
+function generateId() {
+  return btoa(''+Date.now());
+}
 
 /**
  * @function get_logs
@@ -202,7 +235,7 @@ saveScriptBtn.addEventListener('click', () => {
   if (editingIndex >= 0) {
     userscripts[editingIndex] = {...userscripts[editingIndex], ...scriptData};
   } else {
-    userscripts.push({...scriptData, id: ''+Date.now()});
+    userscripts.push({...scriptData, id: generateId()});
   }
 
   saveScriptsToStorage();
