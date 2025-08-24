@@ -4,6 +4,7 @@
  * @typedef {import('./dashboard.js').UserScriptMenu} UserScriptMenu
  * @typedef {import('./dashboard.js').TabData} TabData
  * @typedef {import('./dashboard.js').UserScriptLog} UserScriptLog
+ * @typedef {import('./dashboard.js').ScriptStorageData} ScriptStorageData
  */
 
 /**
@@ -38,31 +39,32 @@ function generateId() {
   return btoa(''+Date.now());
 }
 
-function gmApi(scriptId) {
+async function gmApi(scriptId) {
   chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_REGISTER_SCRIPT', scriptId});
 
   /**
    * @type {Array<UserScriptMenu>}
    */
   let menus = [];
+  /**
+   * @type {{ [key: string]: string }}
+   */
+  let scriptStorage = {};
 
   function generateId() {
     return btoa(''+Date.now());
   }
 
   const getValue = (k, v) => {
-    chrome.runtime.sendMessage({
-      type: 'USER_SCRIPT_MSG_GM_SETVALUE',
-      key: k,
-      value: v,
-      scriptId,
-    });
+    return scriptStorage[k] || v;
   }
   const setValue = (k, v) => {
+    const strv = typeof v === 'string' || typeof v === 'undefined' || v === null ? v : String(v);
+    scriptStorage[k] = strv;
     chrome.runtime.sendMessage({
       type: 'USER_SCRIPT_MSG_GM_SETVALUE',
       key: k,
-      value: v,
+      value: strv,
       scriptId,
     });
   }
@@ -90,6 +92,7 @@ function gmApi(scriptId) {
     });
     return menuId;
   }
+
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if(message.type == 'USER_SCRIPT_MSG_TRIGGER_MENU') {
       const m = menus.findIndex(i => i.menuId);
@@ -98,6 +101,9 @@ function gmApi(scriptId) {
       }
     }
   });
+
+  scriptStorage = await chrome.runtime.sendMessage({ type: 'USER_SCRIPT_MSG_GET_STORAGE', scriptId }) ;
+
   return {
     GM_setValue: setValue,
     GM_getValue: getValue,
@@ -117,7 +123,7 @@ try {
   (async () => {
     const scriptId = "${usData.id}";
     const gmApi = ${gmApi.toString()};
-    const {GM_setValue, GM_getValue, GM_log, GM_registerMenuCommand} = gmApi(scriptId);
+    const {GM_setValue, GM_getValue, GM_log, GM_registerMenuCommand} = await gmApi(scriptId);
     ${usData.code}
   })();
 } catch (e) {
@@ -142,47 +148,71 @@ function loadScriptsFromStorage() {
 }
 
 /**
+ * @async
+ * @param {UserScriptData} data script data
+ * @returns {Promise<Array<UserScriptData>>} user script data
+ */
+function saveScriptToStorage(data) {
+  return new Promise(resolve => {
+    chrome.storage.local.get('userscripts', (result) => {
+      /**
+       * @type {Array<UserScriptData>}
+       */
+      const userscripts = result.userscripts || [];
+      const index = userscripts.findIndex(i => i.id == data.id);
+      if(index !== -1) {
+        userscripts[index] = data;
+      } else {
+        userscripts.push(data);
+      }
+      resolve(userscripts);
+    });
+  })
+}
+
+/**
  * @function loadUserContentScripts load user scripts
  */
 async function loadUserContentScripts() {
-    if (!isUserScriptsAvailable()) {
-        console.log("please enable user script option for extension");
-        return;
-    }
-    chrome.userScripts.configureWorld({
-      csp: "script-src 'self'",
-      messaging: true,
-    });
-    const userScripts = await loadScriptsFromStorage();
-    const installedScripts = await chrome.userScripts.getScripts();
-    userScripts.forEach(async elem => {
-      const scriptExists = installedScripts.findIndex(i => i.id === elem.id) != -1;
-      if(elem.enabled) {
-        const opt = [{
-          id: elem.id,
-          matches: elem.match,
-          excludeMatches: elem.exclude,
-          js: [{code: wrapErrorCatcher(elem)}],
-          //world: "MAIN",
-        }];
-        if (scriptExists) {
-            chrome.userScripts.update(opt);
-        } else {
-            chrome.userScripts.register(opt);
-        }
+  tabData = {};
+  if (!isUserScriptsAvailable()) {
+      console.log("please enable user script option for extension");
+      return;
+  }
+  chrome.userScripts.configureWorld({
+    csp: "script-src 'self'",
+    messaging: true,
+  });
+  const userScripts = await loadScriptsFromStorage();
+  const installedScripts = await chrome.userScripts.getScripts();
+  userScripts.forEach(async elem => {
+    const scriptExists = installedScripts.findIndex(i => i.id === elem.id) != -1;
+    if(elem.enabled) {
+      const opt = [{
+        id: elem.id,
+        matches: elem.match,
+        excludeMatches: elem.exclude,
+        js: [{code: wrapErrorCatcher(elem)}],
+        //world: "MAIN",
+      }];
+      if (scriptExists) {
+          chrome.userScripts.update(opt);
       } else {
-        if (scriptExists) {
-          chrome.userScripts.unregister({ ids: [elem.id] });
-        }
+          chrome.userScripts.register(opt);
       }
-    });
-    let removedScripts = new Array();
-    for(const script of installedScripts) {
-      if (userScripts.findIndex(i => i.id == script.id) == -1) {
-        removedScripts.push(script.id);
+    } else {
+      if (scriptExists) {
+        chrome.userScripts.unregister({ ids: [elem.id] });
       }
     }
-    chrome.userScripts.unregister({ ids: removedScripts });
+  });
+  let removedScripts = new Array();
+  for(const script of installedScripts) {
+    if (userScripts.findIndex(i => i.id == script.id) == -1) {
+      removedScripts.push(script.id);
+    }
+  }
+  chrome.userScripts.unregister({ ids: removedScripts });
 }
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -192,7 +222,8 @@ chrome.runtime.onInstalled.addListener(() => {
     .catch(() => console.log('error loading user scripts'));
 });
 
-chrome.runtime.onUserScriptMessage.addListener((message, sender, sendResponse) => {const tabDataKey = '' + sender.tab.id;
+chrome.runtime.onUserScriptMessage.addListener((message, sender, sendResponse) => {
+  const tabDataKey = '' + sender.tab.id;
   if (!tabData[tabDataKey]) {
     tabData[tabDataKey] = {};
     tabData[tabDataKey].menu = [];
@@ -221,7 +252,31 @@ chrome.runtime.onUserScriptMessage.addListener((message, sender, sendResponse) =
       tabData[tabDataKey].menu.push({scriptId, menuId, name});
     }
   } else if (message.type === 'USER_SCRIPT_MSG_GM_REGISTER_SCRIPT') {
-    tabData[tabDataKey].scriptIds.push(message.scriptId);
+    const { scriptId } = message;
+    if(!scriptId) return;
+    if(!tabData[tabDataKey].scriptIds.includes(scriptId)) {
+      tabData[tabDataKey].scriptIds.push(message.scriptId);
+    }
+  } else if (message.type === 'USER_SCRIPT_MSG_GET_STORAGE') {
+    const { scriptId } = message;
+    if(!scriptId) return;
+    chrome.storage.local.get('storage')
+      .then(res => {
+        const storage = res.storage || {};
+        if(!storage[scriptId]) storage[scriptId] = {};
+        sendResponse(storage[scriptId]);
+      }).catch(() => sendResponse({}));
+    return true;
+  } else if (message.type === 'USER_SCRIPT_MSG_GM_SETVALUE') {
+    const { scriptId, key, value } = message;
+    if(!scriptId || !key) return;
+    chrome.storage.local.get('storage')
+      .then(res => {
+        const storage = res || {};
+        if(!storage[scriptId]) storage[scriptId] = {};
+        storage[scriptId][key] = value;
+        chrome.storage.local.set({ storage })
+      });
   }
 });
 
@@ -237,7 +292,12 @@ function extensionBadgeUpdater(tabId) {
   }
 }
 
-chrome.tabs.onUpdated.addListener(extensionBadgeUpdater);
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if(changeInfo.status === 'loading' && !! tabData[tabId]) {
+    tabData[tabId] = null;
+  }
+  extensionBadgeUpdater(tabId);
+});
 chrome.tabs.onActivated.addListener((activeInfo) => extensionBadgeUpdater(activeInfo.tabId));
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -249,6 +309,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .then(res => sendResponse({ scripts: res }))
       .catch(() => sendResponse({ scripts: [] }));
     return true;
+  } else if (message.type === 'USER_SCRIPT_MSG_SET_USERSCRIPT') {
+    if (!!message.data) {
+      saveScriptToStorage(message.data);
+      loadUserContentScripts()
+        .then(() => console.log('user scripts loaded after adding/updating script'))
+        .catch(() => console.log('error loading user scripts after adding/updating script'));
+    }
   } else if (message.type === 'USER_SCRIPT_MSG_GET_TAB_DATA') {
     const ret = tabData[message.tabId] || {menu: [], scriptIds: []};
     sendResponse(ret);

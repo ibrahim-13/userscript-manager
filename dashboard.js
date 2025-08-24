@@ -33,10 +33,18 @@ import { parseMetadata } from './meta-parser.js';
  * @property {Array<UserScriptMenu>} menu userscript menus for tab
  * @property {Array<UserScriptData>} scriptIds script ids registered for tab
  */
+
 /**
  * @typedef {object} UserScriptLog
  * @property {string} time timestamp
  * @property {string} data log data
+ */
+
+/**
+ * @typedef {object} ScriptStorageData
+ * @property {string} scriptId id of the user script
+ * @property {string} key key for storing data
+ * @property {string} value data
  */
 
 /**

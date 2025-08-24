@@ -60,8 +60,9 @@ function renderScripts(tabId, userScripts, tabData) {
       const index = userScripts.findIndex(i => i.id === checkbox.id);
       if(index != -1) {
         userScripts[index].enabled = checkbox.checked;
-        chrome.storage.local.set({ userscripts: userScripts });
-        chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_LOAD_USERSCRIPT'});
+        chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_SET_USERSCRIPT', data: userScripts[index] });
+      } else {
+        console.error("trying to update user script which is not registered");
       }
     });
 
