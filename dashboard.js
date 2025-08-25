@@ -41,13 +41,6 @@ import { parseMetadata } from './meta-parser.js';
  */
 
 /**
- * @typedef {object} ScriptStorageData
- * @property {string} scriptId id of the user script
- * @property {string} key key for storing data
- * @property {string} value data
- */
-
-/**
  * @function generateId
  * @returns {string} id generated from timestamp
  */
@@ -103,16 +96,16 @@ const saveStorageEntryBtn = document.getElementById('saveStorageEntryBtn');
 const cancelStorageEntryBtn = document.getElementById('cancelStorageEntryBtn');
 
 function saveScriptsToStorage() {
-  chrome.storage.local.set({ userscripts });
-  chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_LOAD_USERSCRIPT'});
+  chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_SET_USERSCRIPT_ALL', data: userscripts});
 }
 
 function loadScriptsFromStorage() {
-  chrome.storage.local.get('userscripts', (result) => {
-    userscripts = result.userscripts || [];
-    renderScriptList();
-    populateStorageScriptSelect();
-  });
+  chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_USERSCRIPT_ALL'})
+    .then((result) => {
+      userscripts = result.scripts || [];
+      renderScriptList();
+      populateStorageScriptSelect();
+    });
 }
 
 function renderScriptList() {
@@ -268,34 +261,35 @@ function loadStorageForSelectedScript() {
   storageTableBody.innerHTML = '';
   const selectedIndex = parseInt(storageScriptSelect.value, 10);
   if (isNaN(selectedIndex) || !userscripts[selectedIndex]) return;
-  const prefix = selectedIndex + '_';
-  chrome.storage.local.get(null, (items) => {
-    Object.keys(items).forEach(key => {
-      if (key.startsWith(prefix)) {
+  const scriptId = userscripts[selectedIndex].id;
+  chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_STORAGE', scriptId})
+    .then((items) => {
+      Object.keys(items).forEach(key => {
         const val = items[key];
         const tr = document.createElement('tr');
 
         const keyCell = document.createElement('td');
-        keyCell.textContent = key.substring(prefix.length);
+        keyCell.textContent = key;
 
         const valCell = document.createElement('td');
-        valCell.textContent = JSON.stringify(val);
+        valCell.textContent = val;
 
         const actionsCell = document.createElement('td');
 
         const editBtn = document.createElement('button');
         editBtn.textContent = 'Edit';
         editBtn.addEventListener('click', () => {
-          editStorageEntry(key, val);
+          editStorageEntry(scriptId, key, val);
         });
 
         const delBtn = document.createElement('button');
         delBtn.textContent = 'Delete';
         delBtn.addEventListener('click', () => {
           if (confirm(`Delete key "${keyCell.textContent}"?`)) {
-            chrome.storage.local.remove(key, () => {
-              loadStorageForSelectedScript();
-            });
+            chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_DELVALUE', scriptId, key})
+              .then(() => {
+                loadStorageForSelectedScript();
+              });
           }
         });
 
@@ -306,51 +300,53 @@ function loadStorageForSelectedScript() {
         tr.appendChild(valCell);
         tr.appendChild(actionsCell);
         storageTableBody.appendChild(tr);
-      }
+      });
     });
-  });
 }
 
-function editStorageEntry(fullKey, value) {
+function editStorageEntry(scriptId, key, value) {
   addStorageEntryForm.classList.remove('hidden');
-  newStorageKeyInput.value = fullKey.substring(storageScriptSelect.value.length + 1);
+  newStorageKeyInput.value = key;
   newStorageKeyInput.disabled = true; // key cannot be changed on edit
-  newStorageValueInput.value = JSON.stringify(value);
+  newStorageValueInput.value = value;
   saveStorageEntryBtn.onclick = () => {
-    try {
-      const newVal = JSON.parse(newStorageValueInput.value);
-      const newKey = storageScriptSelect.value + '_' + newStorageKeyInput.value;
-      chrome.storage.local.set({ [newKey]: newVal }, () => {
+    const newVal = newStorageValueInput.value;
+    if(!newVal) {
+      alert("Value can not be empty");
+      return;
+    }
+    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_SETVALUE', scriptId, key: newStorageKeyInput.value, value: newVal})
+      .then(() => {
         addStorageEntryForm.classList.add('hidden');
         loadStorageForSelectedScript();
       });
-    } catch (e) {
-      alert('Value must be valid JSON.');
-    }
   };
 }
 
 addStorageEntryBtn.addEventListener('click', () => {
+  const selectedIndex = parseInt(storageScriptSelect.value, 10);
+  if (isNaN(selectedIndex) || !userscripts[selectedIndex]) return;
+  const scriptId = userscripts[selectedIndex].id;
   addStorageEntryForm.classList.remove('hidden');
   newStorageKeyInput.value = '';
   newStorageKeyInput.disabled = false;
   newStorageValueInput.value = '';
   saveStorageEntryBtn.onclick = () => {
-    try {
-      const key = newStorageKeyInput.value.trim();
-      if (!key) {
-        alert('Key cannot be empty.');
-        return;
-      }
-      const fullKey = storageScriptSelect.value + '_' + key;
-      const val = JSON.parse(newStorageValueInput.value);
-      chrome.storage.local.set({ [fullKey]: val }, () => {
+    const key = newStorageKeyInput.value.trim();
+    if (!key) {
+      alert('Key cannot be empty.');
+      return;
+    }
+    const val = newStorageValueInput.value;
+    if(!val) {
+      alert("Value can not be empty");
+      return;
+    }
+    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_SETVALUE', scriptId, key, value: val})
+      .then(() => {
         addStorageEntryForm.classList.add('hidden');
         loadStorageForSelectedScript();
       });
-    } catch (e) {
-      alert('Value must be valid JSON.');
-    }
   };
 });
 

@@ -4,7 +4,6 @@
  * @typedef {import('./dashboard.js').UserScriptMenu} UserScriptMenu
  * @typedef {import('./dashboard.js').TabData} TabData
  * @typedef {import('./dashboard.js').UserScriptLog} UserScriptLog
- * @typedef {import('./dashboard.js').ScriptStorageData} ScriptStorageData
  */
 
 /**
@@ -165,7 +164,82 @@ function saveScriptToStorage(data) {
       } else {
         userscripts.push(data);
       }
+      chrome.storage.local.set({ userscripts });
       resolve(userscripts);
+    });
+  })
+}
+
+
+
+/**
+ * @param {Array<UserScriptData>} data script data
+ */
+function saveAllScriptToStorage(data) {
+  return new Promise(resolve => chrome.storage.local.set({ userscripts: data }).then(() => resolve(data)));
+}
+
+/**
+ * @async
+ * @returns {Promise<Array<{[scriptId: string]: {[key: string]: string}}>>} user script storage data
+ */
+function loadScriptSavedValueFromStorage() {
+  return new Promise(resolve => {
+    chrome.storage.local.get('storage', (result) => {
+      const storage = result.storage || {};
+      resolve(storage);
+    });
+  })
+}
+
+/**
+ * @async
+ * @param {string} scriptId id of the script
+ * @param {{[key: string]: string}} data data stored by the script
+ * @returns {Promise<{[scriptId: string]: {[key: string]: string}}>} user script storage data
+ */
+function saveScriptSavedValueToStorage(scriptId, data) {
+  return new Promise(resolve => {
+    chrome.storage.local.get('storage', (result) => {
+      const storage = result.storage || {};
+      storage[scriptId] = data;
+      chrome.storage.local.set({ storage });
+      resolve(storage);
+    });
+  })
+}
+
+/**
+ * @async
+ * @param {string} scriptId id of the script
+ * @param {string} key
+ * @param {string} value
+ * @returns {Promise<{[scriptId: string]: {[key: string]: string}}>} user script storage data
+ */
+function saveScriptSavedKeyValueToStorage(scriptId, key, value) {
+  return new Promise(resolve => {
+    chrome.storage.local.get('storage', (result) => {
+      const storage = result.storage || {};
+      storage[scriptId][key] = value;
+      chrome.storage.local.set({ storage });
+      resolve(storage);
+    });
+  })
+}
+
+/**
+ * @async
+ * @param {string} scriptId id of the script
+ * @param {string} key
+ * @returns {Promise<{[scriptId: string]: {[key: string]: string}}>} user script storage data
+ */
+function deleteScriptSavedKeyValueToStorage(scriptId, key) {
+  return new Promise(resolve => {
+    chrome.storage.local.get('storage', (result) => {
+      const storage = result.storage || {};
+      delete storage[scriptId][key];
+      chrome.storage.local.set({ storage });
+      resolve(storage);
     });
   })
 }
@@ -185,8 +259,8 @@ async function loadUserContentScripts() {
   });
   const userScripts = await loadScriptsFromStorage();
   const installedScripts = await chrome.userScripts.getScripts();
-  userScripts.forEach(async elem => {
-    const scriptExists = installedScripts.findIndex(i => i.id === elem.id) != -1;
+  userScripts.forEach(elem => {
+    const isScriptInstalled = installedScripts.findIndex(i => i.id === elem.id) != -1;
     if(elem.enabled) {
       const opt = [{
         id: elem.id,
@@ -195,13 +269,14 @@ async function loadUserContentScripts() {
         js: [{code: wrapErrorCatcher(elem)}],
         //world: "MAIN",
       }];
-      if (scriptExists) {
-          chrome.userScripts.update(opt);
+      if (isScriptInstalled) {
+        chrome.userScripts.update(opt);
       } else {
-          chrome.userScripts.register(opt);
+        chrome.userScripts.register(opt);
       }
     } else {
-      if (scriptExists) {
+      console.log("user script is disabled")
+      if (isScriptInstalled) {
         chrome.userScripts.unregister({ ids: [elem.id] });
       }
     }
@@ -260,23 +335,17 @@ chrome.runtime.onUserScriptMessage.addListener((message, sender, sendResponse) =
   } else if (message.type === 'USER_SCRIPT_MSG_GET_STORAGE') {
     const { scriptId } = message;
     if(!scriptId) return;
-    chrome.storage.local.get('storage')
-      .then(res => {
-        const storage = res.storage || {};
-        if(!storage[scriptId]) storage[scriptId] = {};
-        sendResponse(storage[scriptId]);
-      }).catch(() => sendResponse({}));
+    loadScriptSavedValueFromStorage()
+      .then(storage => sendResponse(storage[scriptId] || {}))
+      .catch(() => sendResponse({}));
     return true;
   } else if (message.type === 'USER_SCRIPT_MSG_GM_SETVALUE') {
     const { scriptId, key, value } = message;
     if(!scriptId || !key) return;
-    chrome.storage.local.get('storage')
-      .then(res => {
-        const storage = res || {};
-        if(!storage[scriptId]) storage[scriptId] = {};
-        storage[scriptId][key] = value;
-        chrome.storage.local.set({ storage })
-      });
+    saveScriptSavedKeyValueToStorage(scriptId, key, value)
+      .then(storage => sendResponse(storage[scriptId] || {}))
+      .catch(() => sendResponse({}));
+    return true;
   }
 });
 
@@ -311,10 +380,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   } else if (message.type === 'USER_SCRIPT_MSG_SET_USERSCRIPT') {
     if (!!message.data) {
-      saveScriptToStorage(message.data);
-      loadUserContentScripts()
-        .then(() => console.log('user scripts loaded after adding/updating script'))
-        .catch(() => console.log('error loading user scripts after adding/updating script'));
+      saveScriptToStorage(message.data)
+        .then(() => loadUserContentScripts()
+          .then(() => console.log('user scripts loaded after adding/updating script'))
+          .catch(() => console.log('error loading user scripts after adding/updating script')));
+    }
+  } else if (message.type === 'USER_SCRIPT_MSG_SET_USERSCRIPT_ALL') {
+    if (!!message.data) {
+      saveAllScriptToStorage(message.data)
+        .then(() => loadUserContentScripts()
+          .then(() => console.log('user scripts loaded after adding/updating all scripts'))
+          .catch(() => console.log('error loading user scripts after adding/updating all scripts')));
     }
   } else if (message.type === 'USER_SCRIPT_MSG_GET_TAB_DATA') {
     const ret = tabData[message.tabId] || {menu: [], scriptIds: []};
@@ -323,5 +399,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     loadUserContentScripts()
       .then(() => console.log('user scripts loaded from message handler'))
       .catch(() => console.log('error loading user scripts from message handler'));
+  } else if (message.type === 'USER_SCRIPT_MSG_GET_STORAGE') {
+    const { scriptId } = message;
+    if(!scriptId) return;
+    loadScriptSavedValueFromStorage()
+      .then(storage => sendResponse(storage[scriptId] || {}))
+      .catch(() => sendResponse({}));
+    return true;
+  } else if (message.type === 'USER_SCRIPT_MSG_GM_DELVALUE') {
+    const { scriptId, key } = message;
+    if(!scriptId || !key) return;
+    deleteScriptSavedKeyValueToStorage(scriptId, key)
+      .then(storage => sendResponse(storage[scriptId] || {}))
+      .catch(() => sendResponse({}));
+    return true;
+  } else if (message.type === 'USER_SCRIPT_MSG_GM_SETVALUE') {
+    const { scriptId, key, value } = message;
+    if(!scriptId || !key) return;
+    saveScriptSavedKeyValueToStorage(scriptId, key, value)
+      .then(storage => sendResponse(storage[scriptId] || {}))
+      .catch(() => sendResponse({}));
+    return true;
   }
 });
