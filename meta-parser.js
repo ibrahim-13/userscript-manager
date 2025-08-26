@@ -1,5 +1,5 @@
 /**
- * @typedef {import("./userscript.js").UserScriptMetadata} UserScriptMetadata
+ * @typedef {import("./modules/types").UserScriptMetadata} UserScriptMetadata
  */
 
 /**

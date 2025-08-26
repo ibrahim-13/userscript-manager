@@ -1,7 +1,13 @@
 /**
- * @typedef {import('./dashboard.js').UserScriptMetadata} UserScriptMetadata
- * @typedef {import('./dashboard.js').UserScriptData} UserScriptData
- * @typedef {import('./dashboard.js').TabData} TabData
+ * @typedef {import("./chrome.js")} chrome
+ */
+
+/**
+ * @typedef {import('./modules/types.js').TabData} TabData
+ * @typedef {import('./modules/types.js').UserScriptData} UserScriptData
+ * @typedef {import('./modules/types.js').UserScriptLog} UserScriptLog
+ * @typedef {import('./modules/types.js').UserScriptMenu} UserScriptMenu
+ * @typedef {import('./modules/types.js').UserScriptMetadata} UserScriptMetadata
  */
 
 const scriptList = document.getElementById('scriptList');

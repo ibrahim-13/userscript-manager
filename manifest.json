@@ -10,7 +10,8 @@
     "userScripts"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "action": {
     "default_popup": "popup.html",
@@ -19,7 +20,7 @@
   "options_page": "dashboard.html",
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [{
-    "resources": ["gm-api.js", "meta-parser.js"],
+    "resources": ["meta-parser.js"],
     "matches": ["<all_urls>"]
   }]
 }
