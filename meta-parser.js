@@ -7,7 +7,7 @@
  * @param {string} code userscript code
  * @returns {UserScriptMetadata} userscript metadata in key-value pairs
  */
-export function parseMetadata(code) {
+function parseMetadata(code) {
   const meta = {};
   const metaRegex = /\/\/\s*==UserScript==([\s\S]*?)\/\/\s*==\/UserScript==/;
   const match = code.match(metaRegex);
@@ -34,4 +34,52 @@ export function parseMetadata(code) {
     }
   }
   return meta;
+}
+
+export class MetadataParser {
+  /**
+   * @type {UserScriptMetadata}
+   */
+  #data = '';
+
+  /**
+   * @param {string} data 
+   */
+  constructor(data) {
+    this.#data = parseMetadata(data || '');
+  }
+
+  /**
+   * @returns {UserScriptMetadata}
+   */
+  GetMetadata() {
+    return this.#data;
+  }
+
+  /**
+   * @param {string} key
+   * @param {string} fallback
+   * @returns {string}
+   */
+  GetFirstFromMetaEntry(key, fallback) {
+    const data = this.#data[key];
+    if(Array.isArray(data)) {
+      return data.length > 0 ? data[0] : fallback;
+    }
+    return typeof data === 'string' ? data || fallback
+      : fallback;
+  }
+
+  /**
+   * @param {string} key
+   * @returns {string[]}
+   */
+  GetArrayFromMetaEntry(key) {
+    const data = this.#data[key];
+    if(Array.isArray(data)) {
+      return data.map(s => s.trim()).filter(Boolean);
+    }
+    return typeof data === 'string' ? [data].map(s => s.trim()).filter(Boolean)
+      : [];
+  }
 }

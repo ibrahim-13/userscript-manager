@@ -79,12 +79,13 @@ async function gmApi(scriptId) {
  * @returns {string}
  */
 export function withGmApi(usData) {
+  const grantedGmApi = usData.grant.join(",");
   return `//# sourceURL=${chrome.runtime.getURL(`/${encodeURI(usData.name)}.user.js`)}
 try {
   (async () => {
     const scriptId = "${usData.id}";
     const gmApi = ${gmApi.toString()};
-    const {GM_setValue, GM_getValue, GM_log, GM_registerMenuCommand} = await gmApi(scriptId);
+    const {${grantedGmApi}} = await gmApi(scriptId);
     ${usData.code}
   })();
 } catch (e) {

@@ -4,19 +4,44 @@
   <meta charset="UTF-8" />
   <title>Userscript Manager</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 10px; min-width: 200px; }
+    body { font-family: Arial, sans-serif; font-size: medium; margin: 10px; min-width: 300px; color: #fff; background-color: #202c2c; }
     label { flex-grow: 1; margin-left: 8px; }
-    a { display: inline-block; margin-top: 10px; font-size: 0.9em; }
+    a { color: #cbccf9; border-color: #fff; }
+    button {
+      padding: 3px 6px;
+      color: #fff;
+      background-color: #175455;
+      border-color: #09989a;
+      border-radius: 7px;
+      border-style: inset;
+      cursor: pointer;
+    }
+    input[type="checkbox"] {
+      accent-color: green;
+      cursor: pointer;
+      transform: scale(1.5);
+    }
 
-    .script_info { margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
-    .script_menu { margin-left: 13px; }
+    .script_info {
+      margin-top: 5px;
+      margin-bottom: 3px;
+      padding-top: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: start;
+      border-top: 1px solid white;
+    }
+    .script_menu { margin-left: 29px; }
+
+    #userscript_permissions_error { background-color: crimson; }
+    #dashboard-link { display: inline-block; margin-top: 17px; font-size: 0.9em; }
   </style>
 </head>
 <body>
   <h3>Userscripts</h3>
   <p id="userscript_permissions_error" style="display: none;">Please enable UserScripts option for this extension</p>
   <div id="scriptList"></div>
-  <a href="dashboard.html" target="_blank" rel="noopener noreferrer">Manage Scripts</a>
+  <a id="dashboard-link" href="dashboard.html" target="_blank" rel="noopener noreferrer">Manage Scripts</a>
 
   <script type="module" src="popup.js"></script>
 </body>

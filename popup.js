@@ -29,6 +29,10 @@ function isUserScriptsAvailable() {
 }
 
 async function loadScripts() {
+  if(!isUserScriptsAvailable()) {
+    return;
+  }
+  
   const tabId = (await chrome.tabs.query({active: true, lastFocusedWindow: true}))[0].id;
   const result = await chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_USERSCRIPT_ALL'});
   /**
@@ -61,6 +65,7 @@ function renderScripts(tabId, userScripts, tabData) {
     checkbox.type = 'checkbox';
     checkbox.checked = script.enabled !== false; // default enabled true
     checkbox.id = script.id;
+    checkbox.title = 'Enable/Disable Script';
 
     checkbox.addEventListener('change', () => {
       const index = userScripts.findIndex(i => i.id === checkbox.id);

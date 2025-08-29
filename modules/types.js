@@ -6,8 +6,12 @@
  * @typedef {object} UserScriptData
  * @property {string} id id of the userscript
  * @property {string} name name of the userscript
- * @property {string} match matching pattern for not runing the userscript
- * @property {string} exclude exclude pattern for not running the userscript
+ * @property {string} version version of the userscript
+ * @property {string} author author of the userscript
+ * @property {string} description author of the userscript
+ * @property {string[]} match matching pattern for not run.ing the userscript
+ * @property {string[]} exclude exclude pattern for not running the userscript
+ * @property {string[]} grant GM Api granted when running the userscript
  * @property {string} code code of the userscript
  * @property {boolean} enabled flag to control if the userscript should run or not
  * @property {UserScriptMetadata} meta metadata of the userscript

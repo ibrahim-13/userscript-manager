@@ -259,7 +259,7 @@ export class EventHandler {
    * @param {(response?: any) => void} sendResponse
    * @returns {boolean}
    */
-  #GM_scriptRun(tabDataKey, message, sender, sendResponse) {
+  #GM_registerScriptRun(tabDataKey, message, sender, sendResponse) {
     const { scriptId } = message;
     if(!scriptId) return;
     if(!this.#tabData[tabDataKey].scriptIds.includes(scriptId)) {
@@ -358,7 +358,7 @@ export class EventHandler {
     } else if (message.type === 'USER_SCRIPT_MSG_GM_REGISTER_MENU') {
       return this.#GM_regesterMenu(tabDataKey, message, sender, sendResponse);
     } else if (message.type === 'USER_SCRIPT_MSG_GM_REGISTER_SCRIPT_RUN') {
-      return this.#GM_scriptRun(tabDataKey, message, sender, sendResponse)
+      return this.#GM_registerScriptRun(tabDataKey, message, sender, sendResponse)
     } else if (message.type === 'USER_SCRIPT_MSG_GM_SETVALUE') {
       return this.#GM_setValue(tabDataKey, message, sender, sendResponse);
     }

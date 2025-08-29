@@ -1,4 +1,4 @@
-import { parseMetadata } from './meta-parser.js';
+import { MetadataParser } from './meta-parser.js';
 
 /**
  * @typedef {import("./chrome.js")} chrome
@@ -38,13 +38,10 @@ function get_logs(index) {
 let userscripts = [];
 let editingIndex = -1;
 
-const scriptList = document.getElementById('scriptList');
+const scriptListTableBody = document.querySelector('#scriptList tbody');
 const addScriptBtn = document.getElementById('addScriptBtn');
 const editor = document.getElementById('editor');
 const editorTitle = document.getElementById('editorTitle');
-const scriptNameInput = document.getElementById('scriptName');
-const scriptMatchInput = document.getElementById('scriptMatch');
-const scriptExcludeInput = document.getElementById('scriptExclude');
 const scriptCodeInput = document.getElementById('scriptCode');
 const saveScriptBtn = document.getElementById('saveScriptBtn');
 const cancelEditBtn = document.getElementById('cancelEditBtn');
@@ -81,12 +78,25 @@ function loadScriptsFromStorage() {
 }
 
 function renderScriptList() {
-  scriptList.innerHTML = '';
+  scriptListTableBody.innerHTML = '';
   userscripts.forEach((script, index) => {
-    const li = document.createElement('li');
+    const tr = document.createElement('tr');
 
-    const nameSpan = document.createElement('span');
-    nameSpan.textContent = script.name || `Unnamed Script ${index + 1}`;
+    const toggleEnabled = document.createElement('input');
+    toggleEnabled.type = 'checkbox';
+    toggleEnabled.checked = script.enabled !== false;
+    toggleEnabled.title = 'Enable/Disable Script';
+    toggleEnabled.addEventListener('change', () => {
+      script.enabled = toggleEnabled.checked;
+      saveScriptsToStorage();
+    });
+
+    const toggleTd = document.createElement('td');
+    toggleTd.classList = "action-column";
+    toggleTd.appendChild(toggleEnabled);
+
+    const nameTd = document.createElement('td');
+    nameTd.textContent = script.name || `Unnamed Script ${index + 1}`;
 
     const editBtn = document.createElement('button');
     editBtn.textContent = 'Edit';
@@ -104,28 +114,35 @@ function renderScriptList() {
       }
     });
 
-    const toggleEnabled = document.createElement('input');
-    toggleEnabled.type = 'checkbox';
-    toggleEnabled.checked = script.enabled !== false;
-    toggleEnabled.title = 'Enable/Disable Script';
-    toggleEnabled.addEventListener('change', () => {
-      script.enabled = toggleEnabled.checked;
-      saveScriptsToStorage();
-    });
-
     const viewLogsBtn = document.createElement('button');
     viewLogsBtn.textContent = 'View Logs';
     viewLogsBtn.addEventListener('click', () => {
       loadLogsForScript(index);
     });
 
-    li.appendChild(toggleEnabled);
-    li.appendChild(nameSpan);
-    li.appendChild(editBtn);
-    li.appendChild(deleteBtn);
-    li.appendChild(viewLogsBtn);
+    const actionTd = document.createElement('td');
+    actionTd.classList = "action-column";
+    actionTd.appendChild(editBtn);
+    actionTd.appendChild(deleteBtn);
+    actionTd.appendChild(viewLogsBtn);
 
-    scriptList.appendChild(li);
+    const versionTd = document.createElement('td');
+    versionTd.textContent = script.version;
+
+    const descriptinTd = document.createElement('td');
+    descriptinTd.textContent = script.description;
+
+    const authorTd = document.createElement('td');
+    authorTd.textContent = script.author;
+
+    tr.appendChild(toggleTd);
+    tr.appendChild(nameTd);
+    tr.appendChild(versionTd);
+    tr.appendChild(descriptinTd);
+    tr.appendChild(authorTd);
+    tr.appendChild(actionTd);
+
+    scriptListTableBody.appendChild(tr);
   });
 }
 
@@ -133,26 +150,34 @@ function openEditor(index) {
   editingIndex = index;
   const script = userscripts[index];
   editorTitle.textContent = 'Edit Script';
-  scriptNameInput.value = script.name || '';
-  scriptMatchInput.value = (script.match || []).join(', ');
-  scriptExcludeInput.value = (script.exclude || []).join(', ');
   scriptCodeInput.value = script.code || '';
   editor.classList.remove('hidden');
 }
 
 function clearEditor() {
   editingIndex = -1;
-  scriptNameInput.value = '';
-  scriptMatchInput.value = '';
-  scriptExcludeInput.value = '';
   scriptCodeInput.value = '';
   editor.classList.add('hidden');
+}
+
+function addPlaceholderInfoInEditor() {
+  scriptCodeInput.value = `// ==UserScript==
+// @name         Script Name
+// @match        https://*.example.com/*
+// @exclude      https://*.example.com/*
+// @version      0.0.1
+// @author       Author Name
+// @description  User script description
+// @grant        GM_functionName
+// ==/UserScript==
+`;
 }
 
 addScriptBtn.addEventListener('click', () => {
   editingIndex = -1;
   editorTitle.textContent = 'Add Script';
   clearEditor();
+  addPlaceholderInfoInEditor();
   editor.classList.remove('hidden');
 });
 
@@ -161,48 +186,30 @@ cancelEditBtn.addEventListener('click', () => {
 });
 
 saveScriptBtn.addEventListener('click', () => {
-  const name = scriptNameInput.value.trim();
-  const matches = scriptMatchInput.value.split(',').map(s => s.trim()).filter(Boolean);
-  const excludes = scriptExcludeInput.value.split(',').map(s => s.trim()).filter(Boolean);
   const code = scriptCodeInput.value;
 
-  if (!name) {
-    alert('Name is required');
-    return;
-  }
-
-  // Validate match patterns with simple check
-  if (matches.length === 0) {
+  // Parse metadata from code: @name, @version, @author, @description, @match, @exclude, @grant
+  const metaParser = new MetadataParser(code);
+  const match = metaParser.GetArrayFromMetaEntry("@match");
+  if (match.length === 0) {
     alert('At least one match pattern is required');
     return;
-  }
-
-  // Parse metadata from code and enforce @match, @exclude, @grant, @require support here (simplified)
-  const meta = parseMetadata(code);
-  if (meta.match) {
-    // Override with meta @match if present
-    const metaMatches = Array.isArray(meta.match) ? meta.match : [meta.match];
-    metaMatches.forEach(pat => {
-      if (!matches.includes(pat)) matches.push(pat);
-    });
-  }
-  if (meta.exclude) {
-    const metaExcludes = Array.isArray(meta.exclude) ? meta.exclude : [meta.exclude];
-    metaExcludes.forEach(pat => {
-      if (!excludes.includes(pat)) excludes.push(pat);
-    });
   }
 
   /**
    * @type {UserScriptData} script data
    */
   const scriptData = {
-    name,
-    match: matches,
-    exclude: excludes,
+    name: metaParser.GetFirstFromMetaEntry("@name", 'No name script'),
+    version: metaParser.GetFirstFromMetaEntry("@version", '0.0.1'),
+    author: metaParser.GetFirstFromMetaEntry("@author", ''),
+    description: metaParser.GetFirstFromMetaEntry("@description", ''),
+    match,
+    exclude: metaParser.GetArrayFromMetaEntry("@exclude"),
+    grant: metaParser.GetArrayFromMetaEntry("@grant"),
     code,
     enabled: true,
-    meta
+    meta: metaParser.GetMetadata(),
   };
 
   if (editingIndex >= 0) {
@@ -247,6 +254,7 @@ function loadStorageForSelectedScript() {
         valCell.textContent = val;
 
         const actionsCell = document.createElement('td');
+        actionsCell.classList = "action-column";
 
         const editBtn = document.createElement('button');
         editBtn.textContent = 'Edit';

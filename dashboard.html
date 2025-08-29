@@ -2,50 +2,71 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Userscript Manager Dashboard</title>
+  <title>Userscript Manager</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 10px; max-width: 800px; }
-    #tabs {
-      margin-bottom: 10px;
-    }
-    #tabs button {
+    /* Overrides */
+    body { font-family: Arial, sans-serif; font-size: medium; margin: 10px; color: #fff; background-color: #202c2c; }
+    textarea { width: 100%; height: 750px; font-family: monospace; color: #fff; background-color: #005249; }
+    a { color: #cbccf9; border-color: #fff; }
+    button {
       margin-right: 5px;
-      padding: 6px 12px;
+      padding: 3px 6px;
+      color: #fff;
+      background-color: #175455;
+      border-color: #09989a;
+      border-radius: 7px;
+      border-style: inset;
       cursor: pointer;
     }
-    #scriptList { list-style: none; padding: 0; }
-    #scriptList li { margin-bottom: 10px; }
-    textarea { width: 100%; height: 150px; font-family: monospace; }
-    .hidden { display: none; }
-    #logPanel, #storagePanel {
-      white-space: pre-wrap;
-      background: #111;
-      color: #eee;
-      height: 200px;
-      overflow: auto;
-      margin-top: 10px;
-      padding: 5px;
-      border-radius: 4px;
-      font-family: monospace;
-    }
-    button { margin-right: 5px; }
     table {
-      border-collapse: collapse;
-      width: 100%;
       margin-top: 5px;
     }
     th, td {
       border: 1px solid #ccc;
       padding: 4px 8px;
     }
+    select { background-color: antiquewhite; }
     input[type=text] {
       width: 100%;
+      background-color: antiquewhite;
       box-sizing: border-box;
     }
+    input[type="checkbox"] {
+      accent-color: green;
+      cursor: pointer;
+      transform: scale(1.5);
+    }
+
+    /* Classes */
+    .hidden { display: none; }
+    .action-column { text-align: center; }
+
+    /* Targeted styles */
+    #tabs {
+      margin-bottom: 10px;
+    }
+    #tabs button {
+      margin-right: 5px;
+      padding: 6px 12px;
+    }
+    #editor button { margin-left: 7px; margin-top: 3px; }
+    #logPanel, #storagePanel {
+      white-space: pre-wrap;
+      background: #111;
+      color: #eee;
+      height: 300px;
+      width: 1000px;
+      overflow: auto;
+      margin-top: 10px;
+      padding: 5px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    #addStorageEntryForm button { margin-left: 3px; margin-top: 7px; }
   </style>
 </head>
 <body>
-  <h2>Userscripts</h2>
+  <h2>Dashboard</h2>
   <div id="tabs">
     <button id="tabScriptsBtn">Scripts</button>
     <button id="tabStorageBtn">Storage Inspector</button>
@@ -53,24 +74,19 @@
 
   <div id="scriptsTab">
     <button id="addScriptBtn">+ Add Script</button>
-    <ul id="scriptList"></ul>
+    <table id="scriptList">
+      <thead>
+        <tr><th>&nbsp;</th><th>Name</th><th>Version</th><th>Description</th><th>Author</th><th>Action</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
     <div id="editor" class="hidden">
       <h3 id="editorTitle">Add/Edit Script</h3>
       <label>
-        Name:<br />
-        <input type="text" id="scriptName" />
+        Match/Exclude Patterns: can add multiple with 1 pattern per line, pattern ref: <a target="_blank" rel="noopener noreferrer" href="https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns">Match pattern</a>
       </label><br />
       <label>
-        Match Patterns (comma separated, ref: <a target="_blank" rel="noopener noreferrer" href="https://developer.chrome.com/docs/extensions/develop/concepts/match-patterns">Match pattern</a>):<br />
-        <input type="text" id="scriptMatch" placeholder="e.g. *://*.example.com/*, *://*.foo.com/*" />
-      </label><br />
-      <label>
-        Exclude Patterns (comma separated):<br />
-        <input type="text" id="scriptExclude" placeholder="e.g. *://excluded.example.com/*" />
-      </label><br />
-      <label>
-        Userscript Code:<br />
         <textarea id="scriptCode" spellcheck="false"></textarea>
       </label><br />
       <button id="saveScriptBtn">Save</button>
