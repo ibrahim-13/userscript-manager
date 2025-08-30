@@ -12,3 +12,15 @@ export function isUserScriptsAvailable() {
     return false;
   }
 }
+
+const idChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+
+/**
+ * @function generateRandomId
+ * @returns {string} id generated from timestamp
+ */
+export function generateRandomId() {
+  return [...Array(16)]
+    .map(() => idChars.charAt(Math.floor(Math.random() * idChars.length)))
+    .join('');
+}

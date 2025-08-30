@@ -22,8 +22,11 @@ async function gmApi(scriptId) {
    */
   let scriptStorage = {};
 
+  const idChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   function generateId() {
-    return btoa(''+Date.now());
+    return [...Array(16)]
+      .map(() => idChars.charAt(Math.floor(Math.random() * idChars.length)))
+      .join('');
   }
 
   const getValue = (k, v) => {
@@ -42,8 +45,8 @@ async function gmApi(scriptId) {
     });
   }
   const registerMenu = (name, callback, opt) => {
-    const menuId = generateId();
-    const menuIndex = menus.findIndex(i => (opt || {}).id === i.id);
+    const menuId = (opt || {}).id || generateId();
+    const menuIndex = menus.findIndex(i => menuId === i.id);
     if(menuIndex !== -1) {
       menus[menuIndex].name = name;
       menus[menuIndex].callback = callback;
@@ -56,7 +59,7 @@ async function gmApi(scriptId) {
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if(message.type == 'USER_SCRIPT_MSG_TRIGGER_MENU') {
-      const m = menus.findIndex(i => i.menuId);
+      const m = menus.findIndex(i => i.menuId === message.menuId);
       if(m != -1 && !!menus[m].callback) {
         menus[m].callback();
       }
