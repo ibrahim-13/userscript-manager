@@ -6,7 +6,7 @@
   <style>
     /* Overrides */
     body { font-family: Arial, sans-serif; font-size: medium; margin: 10px; color: #fff; background-color: #202c2c; }
-    textarea { width: 100%; height: 750px; font-family: monospace; color: #fff; background-color: #005249; }
+    textarea { width: 100%; font-family: monospace; color: #fff; background-color: #005249; }
     a { color: #cbccf9; border-color: #fff; }
     button {
       margin-right: 5px;
@@ -50,6 +50,7 @@
       padding: 6px 12px;
     }
     #editor button { margin-left: 7px; margin-top: 3px; }
+    #scriptCode { height: 750px; }
     #logPanel, #storagePanel {
       white-space: pre-wrap;
       background: #111;
@@ -62,6 +63,7 @@
       border-radius: 4px;
       font-family: monospace;
     }
+    #newStorageValue { height: 350px; }
     #addStorageEntryForm button { margin-left: 3px; margin-top: 7px; }
   </style>
 </head>
@@ -117,7 +119,7 @@
     <div id="addStorageEntryForm" class="hidden">
       <h4>Add Storage Entry</h4>
       <label>Key:<br /><input type="text" id="newStorageKey" /></label><br />
-      <label>Value:<br /><input type="text" id="newStorageValue" /></label><br />
+      <label>Value:<br /><textarea id="newStorageValue" spellcheck="false"></textarea></label><br />
       <button id="saveStorageEntryBtn">Save Entry</button>
       <button id="cancelStorageEntryBtn">Cancel</button>
     </div>

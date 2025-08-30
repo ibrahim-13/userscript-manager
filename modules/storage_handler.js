@@ -60,25 +60,7 @@ export class StorageHandler {
    * @param {Array<UserScriptData>} data script data
    */
   SaveAllScripts(data) {
-    //return new Promise(resolve => chrome.storage.local.set({ [this.#_key_user_scripts]: data }).then(() => resolve(data)));
-    return new Promise(resolve => {
-      chrome.storage.local.get(this.#_key_user_scripts, (result) => {
-        /**
-         * @type {Array<UserScriptData>}
-         */
-        const userscripts = result.userscripts || [];
-        for(const script of data) {
-          const index = userscripts.filter(i => i.id == script.id);
-          if(index !== -1) {
-            userscripts[index] = script;
-          } else {
-            userscripts.push(script);
-          }
-        }
-        chrome.storage.local.set({ [this.#_key_user_scripts]: userscripts });
-        resolve(userscripts);
-      });
-    });
+    return new Promise(resolve => chrome.storage.local.set({ [this.#_key_user_scripts]: data }).then(() => resolve(data)));
   }
 
   /**

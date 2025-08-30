@@ -1,5 +1,5 @@
 import { MetadataParser } from './meta-parser.js';
-import { isUserScriptsAvailable } from './modules/utils.js';
+import { isUserScriptsAvailable, generateRandomId } from './modules/utils.js';
 
 /**
  * @typedef {import("./chrome.js")} chrome
@@ -13,14 +13,6 @@ import { isUserScriptsAvailable } from './modules/utils.js';
  * @typedef {import('./modules/types.js').UserScriptMetadata} UserScriptMetadata
  * @typedef {import('./modules/types.js').GlobalSettings} GlobalSettings
  */
-
-/**
- * @function generateId
- * @returns {string} id generated from timestamp
- */
-function generateId() {
-  return btoa(''+Date.now());
-}
 
 /**
  * @function get_logs
@@ -238,7 +230,7 @@ saveScriptBtn.addEventListener('click', () => {
   if (editingIndex >= 0) {
     userscripts[editingIndex] = {...userscripts[editingIndex], ...scriptData};
   } else {
-    userscripts.push({...scriptData, id: generateId()});
+    userscripts.push({...scriptData, id: generateRandomId()});
   }
 
   saveScriptsToStorage();

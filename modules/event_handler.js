@@ -1,8 +1,8 @@
 import { withGmApi } from './gm-api.js'
-import { isUserScriptsAvailable } from './utils.js'
+import { isUserScriptsAvailable, getTabDataKeyFromId } from './utils.js'
 
 /**
- * @typedef {import("./chrome.js")} chrome
+ * @typedef {import("../chrome.js")} chrome
  */
 
 /**
@@ -286,6 +286,12 @@ export class EventHandler {
     if(!this.#tabData[tabDataKey].scriptIds.includes(scriptId)) {
       this.#tabData[tabDataKey].scriptIds.push(message.scriptId);
     }
+    chrome.tabs.query({active: true, lastFocusedWindow: true})
+      .then(tabs => {
+        if(tabs.findIndex(i => getTabDataKeyFromId(i.id) == tabDataKey) !== -1) {
+          this.#extensionBadgeUpdater(tabDataKey);
+        }
+      })
     return false;
   }
 
@@ -364,7 +370,7 @@ export class EventHandler {
    * @param {(response?: any) => void} sendResponse 
    */
   onUserScriptMessageListener(message, sender, sendResponse) {
-    const tabDataKey = '' + sender.tab.id;
+    const tabDataKey = getTabDataKeyFromId(sender.tab.id);
     if (!this.#tabData[tabDataKey]) {
       this.#tabData[tabDataKey] = {};
       this.#tabData[tabDataKey].menu = [];
