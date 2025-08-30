@@ -1,3 +1,5 @@
+import { isUserScriptsAvailable } from './modules/utils.js'
+
 /**
  * @typedef {import("./chrome.js")} chrome
  */
@@ -8,28 +10,16 @@
  * @typedef {import('./modules/types.js').UserScriptLog} UserScriptLog
  * @typedef {import('./modules/types.js').UserScriptMenu} UserScriptMenu
  * @typedef {import('./modules/types.js').UserScriptMetadata} UserScriptMetadata
+ * @typedef {import('./modules/types.js').GlobalSettings} GlobalSettings
  */
 
+const toggleAllScripts = document.getElementById('toggleAllScripts');
 const scriptList = document.getElementById('scriptList');
-const userScriptPermissionErr = document.getElementById('userscript_permissions_error');
-
-/**
- * @function isUserScriptsAvailable
- * @returns {boolean} returns true if userscript api is available, otherwise false
- */
-function isUserScriptsAvailable() {
-  try {
-    // Method call which throws if API permission or toggle is not enabled.
-    chrome.userScripts.getScripts();
-    return true;
-  } catch {
-    // Not available.
-    return false;
-  }
-}
+const userScriptPermissionErr = document.getElementById('userscriptPermissionsErrorMsg');
 
 async function loadScripts() {
   if(!isUserScriptsAvailable()) {
+    userScriptPermissionErr.style.display = "block";
     return;
   }
   
@@ -43,20 +33,25 @@ async function loadScripts() {
    * @type {TabData}
    */
   const tabData = await chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_TAB_DATA', tabId});
-  renderScripts(tabId, userScripts.filter(i => tabData.scriptIds.includes(i.id)), tabData);
+  const globalSettings = await chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_GLOBAL_SETTINGS'});
+  renderScripts(tabId, userScripts.filter(i => tabData.scriptIds.includes(i.id)), tabData, globalSettings);
 }
 
 /**
  * @function renderScripts render scripts in the popup menu
  * @param {Array<UserScriptData>} userScripts
  * @param {TabData} tabData
+ * @param {GlobalSettings} globalSettings
  */
-function renderScripts(tabId, userScripts, tabData) {
-  if(!isUserScriptsAvailable()) {
-    userScriptPermissionErr.style.display = "block";
-  }
-
+function renderScripts(tabId, userScripts, tabData, globalSettings) {
   scriptList.innerHTML = '';
+
+  toggleAllScripts.checked = !!globalSettings.enabled;
+  toggleAllScripts.addEventListener('change', () => {
+    globalSettings.enabled = toggleAllScripts.checked;
+    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_SET_GLOBAL_SETTINGS', data: globalSettings });
+  });
+
   userScripts.forEach((script) => {
     const script_info = document.createElement('div');
     script_info.className = "script_info";

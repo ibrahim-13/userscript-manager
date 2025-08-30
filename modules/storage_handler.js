@@ -8,6 +8,7 @@
  * @typedef {import('./types.js').UserScriptLog} UserScriptLog
  * @typedef {import('./types.js').UserScriptMenu} UserScriptMenu
  * @typedef {import('./types.js').UserScriptMetadata} UserScriptMetadata
+ * @typedef {import('./types.js').GlobalSettings} GlobalSettings
  */
 
 /**********************************
@@ -16,6 +17,7 @@
 export class StorageHandler {
   #_key_script_storage = 'storage';
   #_key_user_scripts = 'userscripts';
+  #_key_global_settings = 'global_settings';
 
   /**
    * @async
@@ -27,7 +29,7 @@ export class StorageHandler {
         const userscripts = result.userscripts || [];
         resolve(userscripts);
       });
-    })
+    });
   }
 
   /**
@@ -106,7 +108,7 @@ export class StorageHandler {
         chrome.storage.local.set({ [this.#_key_script_storage]: storage });
         resolve(storage);
       });
-    })
+    });
   }
 
   /**
@@ -125,7 +127,7 @@ export class StorageHandler {
         chrome.storage.local.set({ [this.#_key_script_storage]: storage });
         resolve(storage);
       });
-    })
+    });
   }
 
   /**
@@ -143,6 +145,32 @@ export class StorageHandler {
         chrome.storage.local.set({ [this.#_key_script_storage]: storage });
         resolve(storage);
       });
-    })
+    });
+  }
+
+  /**
+   * @async
+   * @returns {Promise<GlobalSettings>} user script storage data
+   */
+  GetGlobalSettings() {
+    return new Promise(resolve => {
+      chrome.storage.local.get(this.#_key_global_settings, (result) => {
+        const settings = result.global_settings || {};
+        resolve(settings);
+      });
+    });
+  }
+
+  /**
+   * @async
+   * @param {GlobalSettings} data global settings
+   * @returns {Promise<GlobalSettings>} user script storage data
+   */
+  SetGlobalSettings(data) {
+    return new Promise(resolve => {
+      const settings = data || {};
+      chrome.storage.local.set({ [this.#_key_global_settings]: settings })
+        .then(() => resolve(settings));
+    });
   }
 }

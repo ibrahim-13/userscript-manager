@@ -1,4 +1,5 @@
 import { withGmApi } from './gm-api.js'
+import { isUserScriptsAvailable } from './utils.js'
 
 /**
  * @typedef {import("./chrome.js")} chrome
@@ -10,6 +11,7 @@ import { withGmApi } from './gm-api.js'
  * @typedef {import('./types.js').UserScriptLog} UserScriptLog
  * @typedef {import('./types.js').UserScriptMenu} UserScriptMenu
  * @typedef {import('./types.js').UserScriptMetadata} UserScriptMetadata
+ * @typedef {import('./types.js').GlobalSettings} GlobalSettings
  * @typedef {import('./storage_handler.js').StorageHandler} StorageHandler
  */
 
@@ -36,26 +38,11 @@ export class EventHandler {
   }
 
   /**
-   * @function isUserScriptsAvailable
-   * @returns {boolean} returns true if user script api is available, otherwise false
-   */
-  #isUserScriptsAvailable() {
-    try {
-      // Method call which throws if API permission or toggle is not enabled.
-      chrome.userScripts.getScripts();
-      return true;
-    } catch {
-      // Not available.
-      return false;
-    }
-  }
-
-  /**
   * @function loadUserContentScripts load user scripts
   */
   async #loadUserContentScripts() {
     this.#tabData = {};
-    if (!this.#isUserScriptsAvailable()) {
+    if (!isUserScriptsAvailable()) {
         console.log("please enable user script option for extension");
         return;
     }
@@ -64,36 +51,43 @@ export class EventHandler {
       messaging: true,
     });
     const userScripts = await this.#storageHandler.LoadScripts();
+    const globalSettings = await this.#storageHandler.GetGlobalSettings();
     const installedScripts = await chrome.userScripts.getScripts();
-    userScripts.forEach(elem => {
-      const isScriptInstalled = installedScripts.findIndex(i => i.id === elem.id) != -1;
-      if(elem.enabled) {
-        const opt = [{
-          id: elem.id,
-          matches: elem.match,
-          excludeMatches: elem.exclude,
-          js: [{code: withGmApi(elem)}],
-          //world: "MAIN",
-        }];
-        if (isScriptInstalled) {
-          chrome.userScripts.update(opt);
+    if(!!globalSettings.enabled) {
+      userScripts.forEach(elem => {
+        const isScriptInstalled = installedScripts.findIndex(i => i.id === elem.id) != -1;
+        if(elem.enabled) {
+          const opt = [{
+            id: elem.id,
+            matches: elem.match,
+            excludeMatches: elem.exclude,
+            js: [{code: withGmApi(elem)}],
+            //world: "MAIN",
+          }];
+          if (isScriptInstalled) {
+            chrome.userScripts.update(opt);
+          } else {
+            chrome.userScripts.register(opt);
+          }
         } else {
-          chrome.userScripts.register(opt);
+          console.log("user script is disabled")
+          if (isScriptInstalled) {
+            chrome.userScripts.unregister({ ids: [elem.id] });
+          }
         }
-      } else {
-        console.log("user script is disabled")
-        if (isScriptInstalled) {
-          chrome.userScripts.unregister({ ids: [elem.id] });
+      });
+      let removedScripts = new Array();
+      for(const script of installedScripts) {
+        if (userScripts.findIndex(i => i.id == script.id) == -1) {
+          removedScripts.push(script.id);
         }
       }
-    });
-    let removedScripts = new Array();
-    for(const script of installedScripts) {
-      if (userScripts.findIndex(i => i.id == script.id) == -1) {
-        removedScripts.push(script.id);
-      }
+      chrome.userScripts.unregister({ ids: removedScripts });
+    } else {
+      const scriptIds = installedScripts.map(i => i.id);
+      chrome.userScripts.unregister({ ids: scriptIds });
+      console.log("global settings is disabled, all user scripts has been unregistered");
     }
-    chrome.userScripts.unregister({ ids: removedScripts });
   }
 
   /**
@@ -161,7 +155,6 @@ export class EventHandler {
     if (!!message.data) {
       this.#storageHandler.SaveScript(message.data)
         .then(() => this.#loadUserContentScripts()
-          .then(() => console.log('user scripts loaded after adding/updating script'))
           .catch(() => console.log('error loading user scripts after adding/updating script')));
     }
     return false;
@@ -178,7 +171,6 @@ export class EventHandler {
     if (!!message.data) {
       this.#storageHandler.SaveAllScripts(message.data)
         .then(() => this.#loadUserContentScripts()
-          .then(() => console.log('user scripts loaded after adding/updating all scripts'))
           .catch(() => console.log('error loading user scripts after adding/updating all scripts')));
     }
     return false;
@@ -199,14 +191,43 @@ export class EventHandler {
 
   /**
    * @param {string} tabDataKey
-   * @param {none} message 
+   * @param {unknown} message 
+   * @param {chrome.runtime.MessageSender} sender
+   * @param {(response: GlobalSettings) => void} sendResponse
+   * @returns {boolean}
+   */
+  #getGlobalSettings(tabDataKey, message, sender, sendResponse) {
+    this.#storageHandler.GetGlobalSettings()
+      .then(sendResponse);
+    return true;
+  }
+
+  /**
+   * @param {string} tabDataKey
+   * @param {{ data: GlobalSettings }} message 
+   * @param {chrome.runtime.MessageSender} sender
+   * @param {(response: GlobalSettings) => void} sendResponse
+   * @returns {boolean}
+   */
+  #setGlobalSettings(tabDataKey, message, sender, sendResponse) {
+    const data = message.data || {};
+    this.#storageHandler.SetGlobalSettings(data)
+      .then(() => {
+        this.#loadUserContentScripts();
+        sendResponse(data);
+      });
+    return true;
+  }
+
+  /**
+   * @param {string} tabDataKey
+   * @param {unknown} message 
    * @param {chrome.runtime.MessageSender} sender
    * @param {(response?: any) => void} sendResponse
    * @returns {boolean}
    */
   #loadUserScripts(tabDataKey, message, sender, sendResponse) {
     this.#loadUserContentScripts()
-      .then(() => console.log('user scripts loaded from message handler'))
       .catch(() => console.log('error loading user scripts from message handler'));
     return false;
   }
@@ -306,7 +327,6 @@ export class EventHandler {
   onInstalledListener(datails) {
     console.log('User script Manager installed');
     this.#loadUserContentScripts()
-      .then(() => console.log('user scripts loaded'))
       .catch(() => console.log('error loading user scripts'));
   }
 
@@ -389,6 +409,10 @@ export class EventHandler {
       return this.#GM_setValue(tabDataKey, message, sender, sendResponse);
     } else if (message.type === 'USER_SCRIPT_MSG_GM_DELVALUE') {
       return this.#GM_deleteValue(tabDataKey, message, sender, sendResponse);
+    } else if (message.type === 'USER_SCRIPT_MSG_GET_GLOBAL_SETTINGS') {
+      return this.#getGlobalSettings(tabDataKey, message, sender, sendResponse);
+    } else if (message.type === 'USER_SCRIPT_MSG_SET_GLOBAL_SETTINGS') {
+      return this.#setGlobalSettings(tabDataKey, message, sender, sendResponse);
     }
   }
 }

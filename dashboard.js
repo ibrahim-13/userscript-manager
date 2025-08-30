@@ -1,4 +1,5 @@
 import { MetadataParser } from './meta-parser.js';
+import { isUserScriptsAvailable } from './modules/utils.js';
 
 /**
  * @typedef {import("./chrome.js")} chrome
@@ -10,6 +11,7 @@ import { MetadataParser } from './meta-parser.js';
  * @typedef {import('./modules/types.js').UserScriptLog} UserScriptLog
  * @typedef {import('./modules/types.js').UserScriptMenu} UserScriptMenu
  * @typedef {import('./modules/types.js').UserScriptMetadata} UserScriptMetadata
+ * @typedef {import('./modules/types.js').GlobalSettings} GlobalSettings
  */
 
 /**
@@ -36,8 +38,16 @@ function get_logs(index) {
  * @type {Array<UserScriptData>}
  */
 let userscripts = [];
+/**
+ * @name globalSettings global settings
+ * @type {GlobalSettings}
+ */
+let globalSettings = {};
 let editingIndex = -1;
 
+const toggleAllScripts = document.getElementById('toggleAllScripts');
+const globalDisabledMsg = document.getElementById('globalDisabledMsg');
+const userScriptPermissionErr = document.getElementById('userscriptPermissionsErrorMsg');
 const scriptListTableBody = document.querySelector('#scriptList tbody');
 const addScriptBtn = document.getElementById('addScriptBtn');
 const editor = document.getElementById('editor');
@@ -68,16 +78,29 @@ function saveScriptsToStorage() {
   chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_SET_USERSCRIPT_ALL', data: userscripts});
 }
 
-function loadScriptsFromStorage() {
-  chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_USERSCRIPT_ALL'})
-    .then((result) => {
-      userscripts = result.scripts || [];
-      renderScriptList();
-      populateStorageScriptSelect();
-    });
+async function loadScriptsFromStorage() {
+  if(!isUserScriptsAvailable()) {
+    userScriptPermissionErr.style.display = "block";
+    return;
+  }
+
+  const resultScripts = await chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_USERSCRIPT_ALL'});
+  const resultGlobalSettings = await chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GET_GLOBAL_SETTINGS'});
+  userscripts = resultScripts.scripts || [];
+  globalSettings = resultGlobalSettings || {};
+  renderScriptList();
+  populateStorageScriptSelect();
 }
 
 function renderScriptList() {
+  toggleAllScripts.checked = !!globalSettings.enabled;
+  toggleAllScripts.addEventListener('change', () => {
+    globalSettings.enabled = toggleAllScripts.checked;
+    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_SET_GLOBAL_SETTINGS', data: globalSettings });
+    loadScriptsFromStorage();
+  });
+  globalDisabledMsg.style.display = !!globalSettings.enabled ? 'none' : 'block';
+
   scriptListTableBody.innerHTML = '';
   userscripts.forEach((script, index) => {
     const tr = document.createElement('tr');

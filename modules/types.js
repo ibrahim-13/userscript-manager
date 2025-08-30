@@ -3,6 +3,11 @@
  */
 
 /**
+ * @typedef {object} GlobalSettings
+ * @property {boolean} enabled id of the script
+ */
+
+/**
  * @typedef {object} UserScriptData
  * @property {string} id id of the userscript
  * @property {string} name name of the userscript

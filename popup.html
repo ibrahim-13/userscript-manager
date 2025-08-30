@@ -33,13 +33,12 @@
     }
     .script_menu { margin-left: 29px; }
 
-    #userscript_permissions_error { background-color: crimson; }
     #dashboard-link { display: inline-block; margin-top: 17px; font-size: 0.9em; }
   </style>
 </head>
 <body>
-  <h3>Userscripts</h3>
-  <p id="userscript_permissions_error" style="display: none;">Please enable UserScripts option for this extension</p>
+  <h3><input id="toggleAllScripts" type="checkbox" /> Userscripts</h3>
+  <p id="userscriptPermissionsErrorMsg" style="display: none; background-color: crimson;">Please enable UserScripts option for this extension</p>
   <div id="scriptList"></div>
   <a id="dashboard-link" href="dashboard.html" target="_blank" rel="noopener noreferrer">Manage Scripts</a>
 
