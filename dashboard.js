@@ -281,7 +281,7 @@ function loadStorageForSelectedScript() {
         delBtn.textContent = 'Delete';
         delBtn.addEventListener('click', () => {
           if (confirm(`Delete key "${keyCell.textContent}"?`)) {
-            chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_DELVALUE', scriptId, key})
+            chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_DELVALUE', scriptId, keys: [key]})
               .then(() => {
                 loadStorageForSelectedScript();
               });
@@ -310,7 +310,7 @@ function editStorageEntry(scriptId, key, value) {
       alert("Value can not be empty");
       return;
     }
-    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_SETVALUE', scriptId, key: newStorageKeyInput.value, value: newVal})
+    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_SETVALUE', scriptId, kv: {[newStorageKeyInput.value]: newVal}})
       .then(() => {
         addStorageEntryForm.classList.add('hidden');
         loadStorageForSelectedScript();
@@ -337,7 +337,7 @@ addStorageEntryBtn.addEventListener('click', () => {
       alert("Value can not be empty");
       return;
     }
-    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_SETVALUE', scriptId, key, value: val})
+    chrome.runtime.sendMessage({type: 'USER_SCRIPT_MSG_GM_SETVALUE', scriptId, kv: {[key]: val}})
       .then(() => {
         addStorageEntryForm.classList.add('hidden');
         loadStorageForSelectedScript();

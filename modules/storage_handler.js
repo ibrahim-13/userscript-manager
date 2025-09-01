@@ -115,15 +115,43 @@ export class StorageHandler {
   /**
    * @async
    * @param {string} scriptId id of the script
-   * @param {string} key
+   * @param {{[key: string]: string | undefined | null}} kv
    * @returns {Promise<{[scriptId: string]: {[key: string]: string}}>} user script storage data
    */
-  DeleteScriptValueByKey(scriptId, key) {
+  SaveScriptValueByKvObject(scriptId, kv) {
     return new Promise(resolve => {
       chrome.storage.local.get(this.#_key_script_storage, (result) => {
         const storage = result.storage || {};
         if(!storage[scriptId]) storage[scriptId] = {};
-        delete storage[scriptId][key];
+        for(const key in kv) {
+          storage[scriptId][key] = kv[key];
+        }
+        chrome.storage.local.set({ [this.#_key_script_storage]: storage });
+        resolve(storage);
+      });
+    });
+  }
+
+  /**
+   * @async
+   * @param {string} scriptId id of the script
+   * @param {string} keys
+   * @returns {Promise<{[scriptId: string]: {[key: string]: string}}>} user script storage data
+   */
+  DeleteScriptValueByKeys(scriptId, keys) {
+    return new Promise(resolve => {
+      if(!Array.isArray(keys) || keys.length < 1) {
+        resolve({});
+        return;
+      }
+      chrome.storage.local.get(this.#_key_script_storage, (result) => {
+        const storage = result.storage || {};
+        if(!storage[scriptId]) storage[scriptId] = {};
+        const _keys = keys.filter(Boolean);
+        const currentKeys = Object.keys(storage[scriptId])
+        for(const k of _keys) {
+          if (currentKeys.includes(k)) delete storage[scriptId][k];
+        }
         chrome.storage.local.set({ [this.#_key_script_storage]: storage });
         resolve(storage);
       });

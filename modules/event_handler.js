@@ -275,6 +275,19 @@ export class EventHandler {
 
   /**
    * @param {string} tabDataKey
+   * @param {{ scriptId: string, nameOrId: string }} message 
+   * @param {chrome.runtime.MessageSender} sender
+   * @param {(response?: any) => void} sendResponse
+   * @returns {boolean}
+   */
+  #GM_unregesterMenu(tabDataKey, message, sender, sendResponse) {
+    const { scriptId, nameOrId } = message;
+    this.#tabData[tabDataKey].menu = this.#tabData[tabDataKey].menu.filter(i => !(nameOrId === i.id || nameOrId === i.name));
+    return false;
+  }
+
+  /**
+   * @param {string} tabDataKey
    * @param {{ scriptId: string }} message 
    * @param {chrome.runtime.MessageSender} sender
    * @param {(response?: any) => void} sendResponse
@@ -297,15 +310,29 @@ export class EventHandler {
 
   /**
    * @param {string} tabDataKey
-   * @param {{ scriptId: string, key: string, value: string }} message 
+   * @param {{ scriptId: string, url: string, inBackground?: boolean }} message 
+   * @param {chrome.runtime.MessageSender} sender
+   * @param {(response?: any) => void} sendResponse
+   * @returns {boolean}
+   */
+  #GM_openInTab(tabDataKey, message, sender, sendResponse) {
+    const { scriptId, url, inBackground } = message;
+    if(!scriptId) return;
+    chrome.tabs.create({ url, active: !inBackground });
+    return false;
+  }
+
+  /**
+   * @param {string} tabDataKey
+   * @param {{ scriptId: string, kv: {[key: string]: string | undefined | null} }} message 
    * @param {chrome.runtime.MessageSender} sender
    * @param {(response: {[key: string]: string}) => void} sendResponse
    * @returns {boolean}
    */
   #GM_setValue(tabDataKey, message, sender, sendResponse) {
-    const { scriptId, key, value } = message;
-    if(!scriptId || !key) return false;
-    this.#storageHandler.SaveScriptValueByKey(scriptId, key, value)
+    const { scriptId, kv } = message;
+    if(!scriptId || typeof kv !== 'object' || Object.keys(kv).length < 1) return false;
+    this.#storageHandler.SaveScriptValueByKvObject(scriptId, kv)
       .then(storage => sendResponse(storage[scriptId] || {}))
       .catch(() => sendResponse({}));
     return true;
@@ -313,15 +340,15 @@ export class EventHandler {
 
   /**
    * @param {string} tabDataKey
-   * @param {{ scriptId: string, key: string }} message 
+   * @param {{ scriptId: string, keys: string[] }} message 
    * @param {chrome.runtime.MessageSender} sender
    * @param {(response: {[key: string]: string}) => void} sendResponse
    * @returns {boolean}
    */
   #GM_deleteValue(tabDataKey, message, sender, sendResponse) {
-    const { scriptId, key } = message;
-    if(!scriptId || !key) return;
-    this.#storageHandler.DeleteScriptValueByKey(scriptId, key)
+    const { scriptId, keys } = message;
+    if(!scriptId || !Array.isArray(keys) || keys.length < 1) return;
+    this.#storageHandler.DeleteScriptValueByKeys(scriptId, keys)
       .then(storage => sendResponse(storage[scriptId] || {}))
       .catch(() => sendResponse({}));
     return true;
@@ -383,10 +410,16 @@ export class EventHandler {
       return this.#GM_log(tabDataKey, message, sender, sendResponse);
     } else if (message.type === 'USER_SCRIPT_MSG_GM_REGISTER_MENU') {
       return this.#GM_regesterMenu(tabDataKey, message, sender, sendResponse);
+    } else if (message.type === 'USER_SCRIPT_MSG_GM_UNREGISTER_MENU') {
+      return this.#GM_unregesterMenu(tabDataKey, message, sender, sendResponse);
     } else if (message.type === 'USER_SCRIPT_MSG_GM_REGISTER_SCRIPT_RUN') {
       return this.#GM_registerScriptRun(tabDataKey, message, sender, sendResponse)
     } else if (message.type === 'USER_SCRIPT_MSG_GM_SETVALUE') {
       return this.#GM_setValue(tabDataKey, message, sender, sendResponse);
+    } else if (message.type === 'USER_SCRIPT_MSG_GM_DELVALUE') {
+      return this.#GM_deleteValue(tabDataKey, message, sender, sendResponse);
+    } else if (message.type === 'USER_SCRIPT_MSG_GM_OPEN_TAB') {
+      return this.#GM_openInTab(tabDataKey, message, sender, sendResponse);
     }
   }
 

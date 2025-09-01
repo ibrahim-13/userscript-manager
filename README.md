@@ -26,19 +26,34 @@ Third-party userscript manager requires a lot of permission by design. So, the p
 
 ## List of available GM Api
 
-- `GM_setValue(key: string, value: string)`
+- `GM_setValue(key: string, value: any)`
 
 | Name | Type | Description |
 |---|---|---|
 | key | string | Key |
-| value | string | Value |
+| value | any | Value |
 
-- `string GM_getValue(key: string, value: string)`
+- `string GM_setValues(kv: {[key: string]: any})`
+
+| Name | Type | Description |
+|---|---|---|
+| kv | {[key: string]: any} | Key-value pair object |
+
+- `any GM_getValue(key: string, value: string)`
 
 | Name | Type | Description |
 |---|---|---|
 | key | string | Key |
 | value | string | Default value to return if key does not exist |
+| RETURN | any | Stored value of the key |
+
+- `{[key: string]: any} GM_getValues(kv: string[] | {[key: string]: any})`
+
+| Name | Type | Description |
+|---|---|---|
+| kv | string[] | String array of keys |
+| | {[key: string]: any} | Key-value object where values of the keys are default value |
+| RETURN | {[key: string]: any} | Key-value object |
 
 - `string GM_registerMenuCommand(name: string, callback: () => void, opt?: { id: string })`
 
@@ -51,7 +66,30 @@ Third-party userscript manager requires a lot of permission by design. So, the p
 
 If an existing menu id is passed to the options, then it will replace the existing menu instead of adding a new one.
 
+- `GM_unregisterMenuCommand(nameOrId: string)`
 
+| Name | Type | Description |
+|---|---|---|
+| nameOrId | string | Name or Id of the menu |
+
+- `GM_deleteValue(key: string)`
+
+| Name | Type | Description |
+|---|---|---|
+| key | string | Key to delete |
+
+- `GM_deleteValues(keys: string[])`
+
+| Name | Type | Description |
+|---|---|---|
+| keys | string[] | String array of keys to delete |
+
+- `GM_openInTab(url: string, inBackground?: boolean)`
+
+| Name | Type | Description |
+|---|---|---|
+| url | string | URL to open |
+| inBackground | boolean? | Open tab in background |
 
 ### Extened Api
 
